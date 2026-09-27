@@ -1,0 +1,273 @@
+{
+  "name": "AIOps Laptop Monitoring - Portfolio Template",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "laptop-health",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -544,
+        0
+      ],
+      "name": "Webhook"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        96,
+        208
+      ],
+      "name": "OpenAI Chat Model (Unused)",
+      "notes": "You are a Linux system health monitoring assistant.\n\nAnalyze the incoming Ubuntu laptop metrics.\n\nEvaluate:\n1. CPU idle percentage and CPU utilization.\n2. Available memory and memory pressure.\n3. Swap usage.\n4. Root filesystem disk usage.\n5. 1-minute, 5-minute, and 15-minute load averages relative to CPU cores.\n\nRules:\n- Identify only issues supported by the provided metrics.\n- Distinguish warnings from critical issues.\n- Do not claim that you have executed commands or fixed anything.\n- Give practical Linux commands to investigate identified issues.\n- If metrics look healthy, say so.\n- Do not assume that a single snapshot proves a persistent issue.\n\nReturn a clear report with:\nHostname:\nOverall status:\nFindings:\nRecommended investigation commands:"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1cfaeeea-cdfe-4e33-a5cc-cadeea63b74d",
+              "leftValue": "={{ Number($json.body.cpu_idle_percent) }}",
+              "rightValue": 15,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -336,
+        80
+      ],
+      "name": "CPU Threshold Check"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL_ADDRESS@example.com",
+        "subject": "CPU Alert - BlueMoon",
+        "emailType": "text",
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        848,
+        16
+      ],
+      "name": "Send a message"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "systemMessage": "You are an AIOps assistant monitoring an Ubuntu laptop.\n\nAnalyze the incoming system metrics.\n\nIdentify:\n- Which resource crossed its alert threshold.\n- The observed values and threshold.\n- Possible causes, clearly marked as hypotheses.\n- Linux commands to investigate the problem.\n- Recommended next steps.\n\nDo not claim you executed commands or fixed anything.\nDo not invent metrics.\nDo not diagnose a persistent issue from a single snapshot.\n\nReturn a concise, professional alert suitable for email."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        352,
+        128
+      ],
+      "name": "AIOps AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        768,
+        208
+      ],
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "36e1a130-bb38-49f1-a615-d73202e9bcc1",
+              "leftValue": "={{ Number($json.body.disk_root_used_percent) }}",
+              "rightValue": 85,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -320,
+        272
+      ],
+      "name": "Disk Threshold Check"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "52bf64df-095f-4ff2-aa3b-05aacd5ba77c",
+              "leftValue": "={{ ($json.body.memory_available_gib / $json.body.memory_total_gib) * 100 }}",
+              "rightValue": 15,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -320,
+        -96
+      ],
+      "name": "Memory Threshold Check"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Memory Threshold Check",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "CPU Threshold Check",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Disk Threshold Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model (Unused)": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "CPU Threshold Check": {
+      "main": [
+        [
+          {
+            "node": "AIOps AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AIOps AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AIOps AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disk Threshold Check": {
+      "main": [
+        [
+          {
+            "node": "AIOps AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory Threshold Check": {
+      "main": [
+        [
+          {
+            "node": "AIOps AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}
