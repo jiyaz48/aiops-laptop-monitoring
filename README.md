@@ -13,6 +13,9 @@ Bash collects system metrics, n8n processes the monitoring data, and an AI Agent
 
 Ubuntu Laptop → Bash Monitoring Script → n8n Webhook → Threshold Checks → AI Agent → Gmail Alert
 
+## Workflow Screenshot
+
+![n8n AIOps Monitoring Workflow](screenshots/workflow.png)
 ## Technologies Used
 
 - Linux (Ubuntu)
